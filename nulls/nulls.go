@@ -30,12 +30,12 @@ func (nulls *Nulls) Interface() interface{} {
 // implementation.
 func (nulls *Nulls) WrappedValue() interface{} {
 	v := reflect.ValueOf(nulls.Value)
-	switch nulls.Value.(type) {
-	case Int:
+	switch {
+	case v.FieldByName("Int").IsValid():
 		return v.FieldByName("Int").Interface()
-	case Int64:
+	case v.FieldByName("Int64").IsValid():
 		return v.FieldByName("Int64").Interface()
-	case UUID:
+	case v.FieldByName("UUID").IsValid():
 		return v.FieldByName("UUID").Interface()
 	default:
 		return nil

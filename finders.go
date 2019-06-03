@@ -276,8 +276,24 @@ func (q *Query) eagerDefaultAssociations(model interface{}) error {
 }
 
 func (q *Query) eagerPreloadAssociations(model interface{}) error {
+	var err error
+
+	// eagerAssociations for a slice or array model passed as a param.
+	v := reflect.ValueOf(model)
+	if reflect.Indirect(v).Kind() == reflect.Slice ||
+		reflect.Indirect(v).Kind() == reflect.Array {
+		v = v.Elem()
+		for i := 0; i < v.Len(); i++ {
+			err = q.eagerAssociations(v.Index(i).Addr().Interface())
+			if err != nil {
+				return err
+			}
+		}
+		return err
+	}
+
 	mt := (&Model{Value: model}).Meta()
-	err := mt.LoadDirect(q.Connection, "has_many")
+	err = mt.LoadDirect(q.Connection, "has_many")
 	if err != nil {
 		return err
 	}

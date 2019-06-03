@@ -226,6 +226,8 @@ func (t *MetaType) MakeMapWithField(field string) *MetaType {
 		var m reflect.Value
 		if n := nulls.New(fval.Interface()); n != nil {
 			m = buildMap(reflect.TypeOf(n.WrappedValue()), sliceValType)
+			fmt.Println("nulls")
+
 		} else {
 			m = buildMap(fval.Type(), sliceValType)
 		}
@@ -234,6 +236,7 @@ func (t *MetaType) MakeMapWithField(field string) *MetaType {
 			v := t.IndirectValue.Index(i)
 			f := v.FieldByName(field)
 			if n := nulls.New(f.Interface()); n != nil {
+				fmt.Println("nulls")
 				f = reflect.ValueOf(n.Interface())
 			}
 
@@ -249,10 +252,20 @@ func (t *MetaType) MakeMapWithField(field string) *MetaType {
 
 	if t.IndirectType.Kind() == reflect.Struct {
 		f := t.IndirectValue.FieldByName(field)
-		m := buildMap(f.Type(), t.Type)
+
+		var m reflect.Value
+		if n := nulls.New(f.Interface()); n != nil {
+			m = buildMap(reflect.TypeOf(n.WrappedValue()), t.Type)
+			f = reflect.ValueOf(n.Interface())
+			fmt.Println("nulls")
+		} else {
+			m = buildMap(f.Type(), t.Type)
+		}
+
 		m.SetMapIndex(f, t.Value)
-		return buildMetaType(m, "")
+		return buildMetaType(m.Interface(), "")
 	}
+
 	return nil
 }
 
@@ -296,6 +309,7 @@ func (t *MetaType) MapKeys() ReflectValues {
 
 // MapValue returns a value for the specified key.
 func (t *MetaType) MapValue(key interface{}) reflect.Value {
+	fmt.Printf("%v", t.Type)
 	if t.Type.Kind() != reflect.Map {
 		panic(fmt.Sprintf("%s is not a map", t.Type))
 	}
@@ -313,17 +327,24 @@ func buildMetaType(model interface{}, name string) *MetaType {
 	iv := reflect.Indirect(v)
 
 	mm := &MetaType{
-		Type:          v.Type(),
-		IndirectType:  iv.Type(),
 		Name:          name,
 		Value:         v,
 		IndirectValue: iv,
 	}
+
+	if v.IsValid() {
+		mm.Type = v.Type()
+	}
+	
+	if iv.IsValid() {
+		mm.IndirectType = iv.Type()
+	}
+
 	if mm.Name == "" {
 		mm.Name = mm.IndirectType.Name()
 	}
 
-	mm.Ptr = mm.Type.Kind() == reflect.Ptr
+	mm.Ptr = mm.Type != nil && mm.Type.Kind() == reflect.Ptr
 
 	if iv.Kind() == reflect.Struct {
 		mm.Fields = []*MetaType{}
@@ -386,45 +407,63 @@ func (t *MetaType) LoadDirect(tx *Connection, tag string) error {
 			elemVal := assoSliceVal.Index(i)
 
 			// Get the relationship field.
+			fmt.Printf(asso.DependencyField())
 			v := elemVal.FieldByName(asso.DependencyField())
+
 
 			// get the map value with the id specified.
 			var u reflect.Value
-			if n := nulls.New(v.Interface()); n != nil { // is a nulls type.
-				u = mmap.MapValue(n.Interface())
-			} else {
-				u = mmap.MapValue(v.Interface())
-			}
+			if v.IsValid() {
+				if n := nulls.New(v.Interface()); n != nil { // is a nulls type.
+					u = mmap.MapValue(n.Interface())
+				} else {
+					u = mmap.MapValue(v.Interface())
+				}
 
-			// get the association field of the map value and append value.
-			b := u.FieldByName(asso.Name)
-			if b.Kind() == reflect.Slice || b.Kind() == reflect.Array {
-				b.Set(reflect.Append(b, elemVal))
-			} else {
-				b.Set(elemVal)
+				// get the association field of the map value and append value.
+				b := u.FieldByName(asso.Name)
+				if b.Kind() == reflect.Slice || b.Kind() == reflect.Array {
+					b.Set(reflect.Append(b, elemVal))
+				} else {
+					b.Set(elemVal)
+				}
 			}
 		}
 	}
 	return nil
 }
 
-// LoadIndirect loads those associations that are before.
+// LoadIndirect loads those associations that are before. ??? Whats that mean
 func (t *MetaType) LoadIndirect(tx *Connection, tag string) error {
 	// 1- get all associations with tag specified.
 	assos := t.Association(tag)
 
-	// 2- iterate and fill every has many association.
+	// 2- iterate and fill every belongs to association.
 	for _, asso := range assos {
+		fmt.Println(asso.Name)
 		assoSlice := asso.MakeSlice()
 		assoSliceInt := assoSlice.Interface()
 
 		fieldName := fmt.Sprintf("%s%s", asso.Name, "ID")
 
 		args := t.FieldByName(fieldName).Interface()
+		
+		// There should only be one referenced Id... why is args a slice...
+		if n := nulls.New(args[0]); n != nil { // is a nulls type.
+			fmt.Println("nulls + %s ", n.Interface())
+			if (n.Interface() == nil ) {
+				continue
+			}
+		}
+		
 		mmap := t.MakeMapWithField(fieldName)
 		err := tx.Where("id in (?)", args...).All(assoSliceInt)
 		if err != nil {
 			return err
+		}
+
+		if mmap == nil {
+			return nil
 		}
 
 		// iterate over every slice element fill in the database.
@@ -434,7 +473,17 @@ func (t *MetaType) LoadIndirect(tx *Connection, tag string) error {
 
 			// Get the relationship field.
 			v := elemVal.FieldByName("ID")
-			slices := mmap.MapValue(v.Interface())
+
+			// get the map value with the id specified.
+			var u reflect.Value
+			if n := nulls.New(v.Interface()); n != nil { // is a nulls type.
+				fmt.Println("nulls")
+				u = mmap.MapValue(n.Interface())
+			} else {
+				u = mmap.MapValue(v.Interface())
+			}
+
+			slices := u
 
 			if slices.IsValid() && (slices.Kind() == reflect.Slice || slices.Kind() == reflect.Array) {
 				for j := 0; j < slices.Len(); j++ {
