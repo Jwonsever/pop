@@ -13,6 +13,7 @@ type Query struct {
 	RawSQL                  *clause
 	limitResults            int
 	addColumns              []string
+	eagerMode               EagerMode
 	eager                   bool
 	eagerFields             []string
 	whereClauses            clauses
@@ -175,6 +176,33 @@ func (q *Query) Limit(limit int) *Query {
 	return q
 }
 
+// SetEagerMode activates the Eager Mode passed as a parameter.
+// this will change the default loading associations strategy for
+// this specific query, not the one used overall.
+// func (c *Connection) SetEagerMode(eagerMode EagerMode) *Query {
+// 	return Q(c).SetEagerMode(eagerMode)
+// }
+
+// SetEagerMode activates the Eager Mode passed as a parameter.
+// this will change the default loading associations strategy for
+// this specific query, not the one used overall.
+// func (q *Query) SetEagerMode(eagerMode EagerMode) *Query {
+// 	q.eagerMode = eagerMode
+// 	return q
+// }
+
+// Preload activates preload eager Mode automatically.
+func (c *Connection) Preload(fields ...string) *Query {
+	return Q(c).Preload(fields...)
+}
+
+// Preload activates preload eager Mode automatically.
+func (q *Query) Preload(fields ...string) *Query {
+	q.Eager(fields...)
+	q.eagerMode = EagerPreload
+	return q
+}
+
 // Q will create a new "empty" query from the current connection.
 func Q(c *Connection) *Query {
 	return &Query{
@@ -182,6 +210,7 @@ func Q(c *Connection) *Query {
 		Connection:  c,
 		eager:       c.eager,
 		eagerFields: c.eagerFields,
+		eagerMode:   eagerModeNil,
 	}
 }
 
