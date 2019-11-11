@@ -141,6 +141,19 @@ func (m *Model) setID(i interface{}) {
 	}
 }
 
+func (m *Model) SetID(i interface{}) {
+	fbn, err := m.fieldByName("ID")
+	if err == nil {
+		v := reflect.ValueOf(i)
+		switch fbn.Kind() {
+		case reflect.Int, reflect.Int64:
+			fbn.SetInt(v.Int())
+		default:
+			fbn.Set(reflect.ValueOf(i))
+		}
+	}
+}
+
 func (m *Model) touchCreatedAt() {
 	fbn, err := m.fieldByName("CreatedAt")
 	if err == nil {
@@ -178,6 +191,10 @@ func (m *Model) whereID() string {
 }
 
 func (m *Model) whereNamedID() string {
+	return fmt.Sprintf("%s.id = :id", m.TableName())
+}
+
+func (m *Model) WhereNamedID() string {
 	return fmt.Sprintf("%s.id = :id", m.TableName())
 }
 

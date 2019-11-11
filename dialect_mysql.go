@@ -26,11 +26,11 @@ const portMySQL = "3306"
 func init() {
 	AvailableDialects = append(AvailableDialects, nameMySQL)
 	urlParser[nameMySQL] = urlParserMySQL
-	finalizer[nameMySQL] = finalizerMySQL
-	newConnection[nameMySQL] = newMySQL
+	Finalizer[nameMySQL] = finalizerMySQL
+	NewConnectionCreator[nameMySQL] = newMySQL
 }
 
-var _ dialect = &mysql{}
+var _ Dialect = &mysql{}
 
 type mysql struct {
 	commonDialect
@@ -80,23 +80,23 @@ func (m *mysql) MigrationURL() string {
 	return m.URL()
 }
 
-func (m *mysql) Create(s store, model *Model, cols columns.Columns) error {
+func (m *mysql) Create(s Store, model *Model, cols columns.Columns) error {
 	return errors.Wrap(genericCreate(s, model, cols, m), "mysql create")
 }
 
-func (m *mysql) Update(s store, model *Model, cols columns.Columns) error {
+func (m *mysql) Update(s Store, model *Model, cols columns.Columns) error {
 	return errors.Wrap(genericUpdate(s, model, cols, m), "mysql update")
 }
 
-func (m *mysql) Destroy(s store, model *Model) error {
+func (m *mysql) Destroy(s Store, model *Model) error {
 	return errors.Wrap(genericDestroy(s, model, m), "mysql destroy")
 }
 
-func (m *mysql) SelectOne(s store, model *Model, query Query) error {
+func (m *mysql) SelectOne(s Store, model *Model, query Query) error {
 	return errors.Wrap(genericSelectOne(s, model, query), "mysql select one")
 }
 
-func (m *mysql) SelectMany(s store, models *Model, query Query) error {
+func (m *mysql) SelectMany(s Store, models *Model, query Query) error {
 	return errors.Wrap(genericSelectMany(s, models, query), "mysql select many")
 }
 
@@ -185,7 +185,7 @@ func (m *mysql) TruncateAll(tx *Connection) error {
 	return tx.RawQuery(qb.String()).Exec()
 }
 
-func newMySQL(deets *ConnectionDetails) (dialect, error) {
+func newMySQL(deets *ConnectionDetails) (Dialect, error) {
 	cd := &mysql{
 		commonDialect: commonDialect{ConnectionDetails: deets},
 	}

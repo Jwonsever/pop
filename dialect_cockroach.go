@@ -30,11 +30,11 @@ func init() {
 	AvailableDialects = append(AvailableDialects, nameCockroach)
 	dialectSynonyms["cockroachdb"] = nameCockroach
 	dialectSynonyms["crdb"] = nameCockroach
-	finalizer[nameCockroach] = finalizerCockroach
-	newConnection[nameCockroach] = newCockroach
+	Finalizer[nameCockroach] = finalizerCockroach
+	NewConnectionCreator[nameCockroach] = newCockroach
 }
 
-var _ dialect = &cockroach{}
+var _ Dialect = &cockroach{}
 
 // ServerInfo holds informational data about connected database server.
 type cockroachInfo struct {
@@ -61,7 +61,7 @@ func (p *cockroach) Details() *ConnectionDetails {
 	return p.ConnectionDetails
 }
 
-func (p *cockroach) Create(s store, model *Model, cols columns.Columns) error {
+func (p *cockroach) Create(s Store, model *Model, cols columns.Columns) error {
 	keyType := model.PrimaryKeyType()
 	switch keyType {
 	case "int", "int64":
@@ -94,21 +94,21 @@ func (p *cockroach) Create(s store, model *Model, cols columns.Columns) error {
 	return genericCreate(s, model, cols, p)
 }
 
-func (p *cockroach) Update(s store, model *Model, cols columns.Columns) error {
+func (p *cockroach) Update(s Store, model *Model, cols columns.Columns) error {
 	return genericUpdate(s, model, cols, p)
 }
 
-func (p *cockroach) Destroy(s store, model *Model) error {
+func (p *cockroach) Destroy(s Store, model *Model) error {
 	stmt := p.TranslateSQL(fmt.Sprintf("DELETE FROM %s WHERE %s", p.Quote(model.TableName()), model.whereID()))
 	_, err := genericExec(s, stmt, model.ID())
 	return err
 }
 
-func (p *cockroach) SelectOne(s store, model *Model, query Query) error {
+func (p *cockroach) SelectOne(s Store, model *Model, query Query) error {
 	return genericSelectOne(s, model, query)
 }
 
-func (p *cockroach) SelectMany(s store, models *Model, query Query) error {
+func (p *cockroach) SelectMany(s Store, models *Model, query Query) error {
 	return genericSelectMany(s, models, query)
 }
 
@@ -247,7 +247,7 @@ func (p *cockroach) AfterOpen(c *Connection) error {
 	return nil
 }
 
-func newCockroach(deets *ConnectionDetails) (dialect, error) {
+func newCockroach(deets *ConnectionDetails) (Dialect, error) {
 	deets.Dialect = "postgres"
 	d := &cockroach{
 		commonDialect:  commonDialect{ConnectionDetails: deets},

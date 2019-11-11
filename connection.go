@@ -16,8 +16,8 @@ var Connections = map[string]*Connection{}
 // Connection represents all necessary details to talk with a datastore
 type Connection struct {
 	ID          string
-	Store       store
-	Dialect     dialect
+	Store       Store
+	Dialect     Dialect
 	Elapsed     int64
 	TX          *Tx
 	eager       bool
@@ -54,7 +54,7 @@ func NewConnection(deets *ConnectionDetails) (*Connection, error) {
 		ID: randx.String(30),
 	}
 
-	if nc, ok := newConnection[deets.Dialect]; ok {
+	if nc, ok := NewConnectionCreator[deets.Dialect]; ok {
 		c.Dialect, err = nc(deets)
 		if err != nil {
 			return c, errors.Wrap(err, "could not create new connection")
@@ -99,14 +99,20 @@ func (c *Connection) Open() error {
 		driver = details.Driver
 	}
 
-	db, err := sqlx.Open(driver, c.Dialect.URL())
+	sqldb, err := sqlx.Open(driver, c.Dialect.URL())
 	if err != nil {
 		return errors.Wrap(err, "could not open database connection")
 	}
+
+	// Trick Sqlx:
+	db := sqlx.NewDb(sqldb.DB, "postgres")
+
 	db.SetMaxOpenConns(details.Pool)
 	if details.IdlePool != 0 {
 		db.SetMaxIdleConns(details.IdlePool)
 	}
+
+
 	c.Store = &dB{db}
 
 	if d, ok := c.Dialect.(afterOpenable); ok {

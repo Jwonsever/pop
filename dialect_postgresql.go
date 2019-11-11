@@ -27,11 +27,11 @@ func init() {
 	dialectSynonyms["postgresql"] = namePostgreSQL
 	dialectSynonyms["pg"] = namePostgreSQL
 	urlParser[namePostgreSQL] = urlParserPostgreSQL
-	finalizer[namePostgreSQL] = finalizerPostgreSQL
-	newConnection[namePostgreSQL] = newPostgreSQL
+	Finalizer[namePostgreSQL] = finalizerPostgreSQL
+	NewConnectionCreator[namePostgreSQL] = newPostgreSQL
 }
 
-var _ dialect = &postgresql{}
+var _ Dialect = &postgresql{}
 
 type postgresql struct {
 	commonDialect
@@ -47,7 +47,7 @@ func (p *postgresql) Details() *ConnectionDetails {
 	return p.ConnectionDetails
 }
 
-func (p *postgresql) Create(s store, model *Model, cols columns.Columns) error {
+func (p *postgresql) Create(s Store, model *Model, cols columns.Columns) error {
 	keyType := model.PrimaryKeyType()
 	switch keyType {
 	case "int", "int64":
@@ -80,11 +80,11 @@ func (p *postgresql) Create(s store, model *Model, cols columns.Columns) error {
 	return genericCreate(s, model, cols, p)
 }
 
-func (p *postgresql) Update(s store, model *Model, cols columns.Columns) error {
+func (p *postgresql) Update(s Store, model *Model, cols columns.Columns) error {
 	return genericUpdate(s, model, cols, p)
 }
 
-func (p *postgresql) Destroy(s store, model *Model) error {
+func (p *postgresql) Destroy(s Store, model *Model) error {
 	stmt := p.TranslateSQL(fmt.Sprintf("DELETE FROM %s WHERE %s", p.Quote(model.TableName()), model.whereID()))
 	_, err := genericExec(s, stmt, model.ID())
 	if err != nil {
@@ -93,11 +93,11 @@ func (p *postgresql) Destroy(s store, model *Model) error {
 	return nil
 }
 
-func (p *postgresql) SelectOne(s store, model *Model, query Query) error {
+func (p *postgresql) SelectOne(s Store, model *Model, query Query) error {
 	return genericSelectOne(s, model, query)
 }
 
-func (p *postgresql) SelectMany(s store, models *Model, query Query) error {
+func (p *postgresql) SelectMany(s Store, models *Model, query Query) error {
 	return genericSelectMany(s, models, query)
 }
 
@@ -195,7 +195,7 @@ func (p *postgresql) TruncateAll(tx *Connection) error {
 	return tx.RawQuery(fmt.Sprintf(pgTruncate, tx.MigrationTableName())).Exec()
 }
 
-func newPostgreSQL(deets *ConnectionDetails) (dialect, error) {
+func newPostgreSQL(deets *ConnectionDetails) (Dialect, error) {
 	cd := &postgresql{
 		commonDialect:  commonDialect{ConnectionDetails: deets},
 		translateCache: map[string]string{},

@@ -1,6 +1,7 @@
 package pop
 
 import (
+	"context"
 	"math/rand"
 	"time"
 
@@ -14,12 +15,14 @@ func init() {
 
 // Tx stores a transaction with an ID to keep track.
 type Tx struct {
+	C context.Context
 	ID int
 	*sqlx.Tx
 }
 
 func newTX(db *dB) (*Tx, error) {
 	t := &Tx{
+		C: context.Background(),
 		ID: rand.Int(),
 	}
 	tx, err := db.Beginx()

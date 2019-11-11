@@ -117,7 +117,7 @@ func (cd *ConnectionDetails) Finalize() error {
 		}
 	}
 
-	if fin, ok := finalizer[cd.Dialect]; ok {
+	if fin, ok := Finalizer[cd.Dialect]; ok {
 		fin(cd)
 	}
 

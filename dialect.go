@@ -7,17 +7,17 @@ import (
 	"github.com/gobuffalo/pop/columns"
 )
 
-type dialect interface {
+type Dialect interface {
 	Name() string
 	URL() string
 	MigrationURL() string
 	Details() *ConnectionDetails
 	TranslateSQL(string) string
-	Create(store, *Model, columns.Columns) error
-	Update(store, *Model, columns.Columns) error
-	Destroy(store, *Model) error
-	SelectOne(store, *Model, Query) error
-	SelectMany(store, *Model, Query) error
+	Create(Store, *Model, columns.Columns) error
+	Update(Store, *Model, columns.Columns) error
+	Destroy(Store, *Model) error
+	SelectOne(Store, *Model, Query) error
+	SelectMany(Store, *Model, Query) error
 	CreateDB() error
 	DropDB() error
 	DumpSchema(io.Writer) error
